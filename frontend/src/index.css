@@ -1,0 +1,233 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Enterprise Glass Blue Theme - Premium Modern Design */
+    --background: 214 47% 97%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary - Deep Enterprise Blue */
+    --primary: 224 76% 33%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Blue */
+    --secondary: 204 94% 94%;
+    --secondary-foreground: 224 76% 33%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent - Bright Blue */
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Status Colors */
+    --status-available: 142 71% 45%;
+    --status-idle: 45 93% 47%;
+    --status-offline: 0 84% 60%;
+    --status-wfh: 199 89% 48%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 224 76% 33%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar - Deep Blue Gradient Base */
+    --sidebar-background: 224 76% 20%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 199 89% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 76% 28%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 224 50% 30%;
+    --sidebar-ring: 199 89% 65%;
+
+    /* Chat specific */
+    --chat-bubble-self: 224 76% 33%;
+    --chat-bubble-other: 0 0% 100%;
+    --chat-text-self: 0 0% 100%;
+    --chat-text-other: 222 47% 11%;
+
+    /* Calendar colors */
+    --calendar-office: 224 76% 33%;
+    --calendar-wfh: 199 89% 48%;
+    --calendar-leave: 0 84% 60%;
+    --calendar-absent: 215 16% 65%;
+
+    /* Glass effect tokens */
+    --glass-background: 0 0% 100% / 0.7;
+    --glass-border: 0 0% 100% / 0.2;
+    --glass-shadow: 224 76% 33% / 0.08;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 12%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 8%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 22%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 217 91% 60%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 20%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Glass effect tokens - dark mode */
+    --glass-background: 222 47% 15% / 0.8;
+    --glass-border: 217 33% 30% / 0.3;
+    --glass-shadow: 0 0% 0% / 0.3;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: -0.01em;
+    background: linear-gradient(135deg, hsl(214 47% 97%) 0%, hsl(204 94% 96%) 50%, hsl(214 47% 97%) 100%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  /* Premium Glass Card Effect */
+  .enterprise-card {
+    @apply rounded-2xl p-6 transition-all duration-300;
+    background: hsl(var(--glass-background));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 
+      0 4px 24px -1px hsl(var(--glass-shadow)),
+      0 2px 8px -2px hsl(var(--glass-shadow)),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.1);
+  }
+
+  .enterprise-card:hover {
+    box-shadow: 
+      0 8px 32px -4px hsl(var(--glass-shadow)),
+      0 4px 16px -4px hsl(var(--glass-shadow)),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.15);
+    transform: translateY(-1px);
+  }
+
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide;
+  }
+
+  .status-available {
+    @apply bg-status-available/15 text-status-available;
+  }
+
+  .status-idle {
+    @apply bg-status-idle/15 text-status-idle;
+  }
+
+  .status-offline {
+    @apply bg-status-offline/15 text-status-offline;
+  }
+
+  /* Sidebar with gradient */
+  .teams-sidebar-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sidebar-foreground/80 hover:bg-sidebar-accent/80 hover:text-sidebar-foreground transition-all duration-200 cursor-pointer;
+    backdrop-filter: blur(8px);
+  }
+
+  .teams-sidebar-item.active {
+    @apply bg-sidebar-accent text-sidebar-primary font-semibold;
+    box-shadow: inset 0 0 0 1px hsl(var(--sidebar-primary) / 0.3);
+  }
+
+  .chat-bubble {
+    @apply max-w-[70%] rounded-2xl px-4 py-2.5 text-sm shadow-sm;
+  }
+
+  .chat-bubble-self {
+    @apply bg-primary text-primary-foreground rounded-br-md;
+    box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.3);
+  }
+
+  .chat-bubble-other {
+    background: hsl(var(--glass-background));
+    backdrop-filter: blur(12px);
+    @apply text-foreground rounded-bl-md border border-border/50;
+  }
+
+  .quick-action-btn {
+    @apply flex flex-col items-center gap-2 p-4 rounded-2xl transition-all duration-300 cursor-pointer;
+    background: hsl(var(--glass-background));
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 2px 8px -2px hsl(var(--glass-shadow));
+  }
+
+  .quick-action-btn:hover {
+    @apply border-primary/30;
+    box-shadow: 0 4px 16px -4px hsl(var(--primary) / 0.2);
+    transform: translateY(-2px);
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 3px;
+  }
+}
