@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Building2, Home, Palmtree, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Building2, Home, Palmtree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { apiService } from '@/services/api';
 
 interface DayInfo {
   date: number;
-  status?: 'office' | 'wfh' | 'leave' | 'absent';
+  status?: 'office' | 'wfh' | 'leave';
   isCurrentMonth: boolean;
   isToday: boolean;
 }
 
+interface CalendarEntry {
+  date: string;
+  type: 'OFFICE' | 'WFH' | 'LEAVE';
+}
+
 const Calendar: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 0, 1)); // January 2024
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarData, setCalendarData] = useState<CalendarEntry[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const months = [
@@ -19,24 +27,32 @@ const Calendar: React.FC = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Mock data for the month
-  const attendanceData: Record<string, 'office' | 'wfh' | 'leave' | 'absent'> = {
-    '2024-01-02': 'office',
-    '2024-01-03': 'office',
-    '2024-01-04': 'wfh',
-    '2024-01-05': 'office',
-    '2024-01-08': 'office',
-    '2024-01-09': 'absent',
-    '2024-01-10': 'office',
-    '2024-01-11': 'wfh',
-    '2024-01-12': 'office',
-    '2024-01-13': 'leave',
-    '2024-01-15': 'office',
-    '2024-01-16': 'wfh',
-    '2024-01-17': 'office',
-    '2024-01-18': 'office',
-    '2024-01-19': 'wfh',
-  };
+  // Fetch calendar data from backend
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true);
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth() + 1;
+        
+        const data = await apiService.calendar.getMonth(year, month);
+        setCalendarData(data);
+      } catch (error) {
+        console.error('Error fetching calendar data:', error);
+        setCalendarData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalendarData();
+  }, [currentDate]);
+
+  // Convert calendar data to a map for easy lookup
+  const attendanceData: Record<string, 'office' | 'wfh' | 'leave'> = {};
+  calendarData.forEach(entry => {
+    attendanceData[entry.date] = entry.type.toLowerCase() as 'office' | 'wfh' | 'leave';
+  });
 
   const getDaysInMonth = (date: Date): DayInfo[] => {
     const year = date.getFullYear();
@@ -103,8 +119,6 @@ const Calendar: React.FC = () => {
         return 'bg-calendar-wfh text-white';
       case 'leave':
         return 'bg-calendar-leave text-white';
-      case 'absent':
-        return 'bg-calendar-absent text-white';
       default:
         return 'bg-transparent';
     }
@@ -118,8 +132,6 @@ const Calendar: React.FC = () => {
         return <Home className="w-3 h-3" />;
       case 'leave':
         return <Palmtree className="w-3 h-3" />;
-      case 'absent':
-        return <X className="w-3 h-3" />;
       default:
         return null;
     }
@@ -127,12 +139,11 @@ const Calendar: React.FC = () => {
 
   const days = getDaysInMonth(currentDate);
 
-  // Stats
+  // Stats - remove "absent" from the list
   const stats = [
     { status: 'office', label: 'Office Days', count: Object.values(attendanceData).filter(s => s === 'office').length, color: 'bg-calendar-office' },
     { status: 'wfh', label: 'WFH Days', count: Object.values(attendanceData).filter(s => s === 'wfh').length, color: 'bg-calendar-wfh' },
     { status: 'leave', label: 'Leave Days', count: Object.values(attendanceData).filter(s => s === 'leave').length, color: 'bg-calendar-leave' },
-    { status: 'absent', label: 'Absent Days', count: Object.values(attendanceData).filter(s => s === 'absent').length, color: 'bg-calendar-absent' },
   ];
 
   return (
