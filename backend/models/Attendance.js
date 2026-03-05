@@ -18,14 +18,18 @@ const attendanceSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  lastActivity: {
+    type: Date,
+    default: Date.now
+  },
   totalHours: {
     type: Number,
     default: 0
   },
   status: {
     type: String,
-    enum: ['CHECKED_IN', 'CHECKED_OUT'],
-    default: 'CHECKED_IN'
+    enum: ['AVAILABLE', 'IDLE', 'OFFLINE'],
+    default: 'AVAILABLE'
   }
 }, {
   timestamps: true

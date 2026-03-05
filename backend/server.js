@@ -25,6 +25,7 @@ app.use('/api/leave', require('./routes/leave'));
 app.use('/api/broadcast', require('./routes/broadcast'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/calendar', require('./routes/calendar'));
+app.use('/api/attendance', require('./routes/attendance'));
 
 // Health check
 app.get('/health', (req, res) => {
