@@ -163,6 +163,114 @@ export const apiService = {
       return response.data;
     },
   },
+
+  // Chat
+  chat: {
+    getConversations: async () => {
+      const response = await api.get('/chat/conversations');
+      return response.data;
+    },
+    getUsers: async () => {
+      const response = await api.get('/chat/users');
+      return response.data;
+    },
+    getMessages: async (conversationId: string) => {
+      const response = await api.get(`/chat/messages/${conversationId}`);
+      return response.data;
+    },
+    searchMessages: async (conversationId: string, query: string, limit = 30) => {
+      const response = await api.get(`/chat/messages/${conversationId}/search`, {
+        params: { q: query, limit },
+      });
+      return response.data;
+    },
+    getConversationParticipants: async (conversationId: string) => {
+      const response = await api.get(`/chat/conversation/${conversationId}/participants`);
+      return response.data;
+    },
+    getPinnedMessages: async (conversationId: string) => {
+      const response = await api.get(`/chat/conversation/${conversationId}/pinned`);
+      return response.data;
+    },
+    addGroupMembers: async (conversationId: string, participantIds: string[]) => {
+      const response = await api.post(`/chat/conversation/${conversationId}/members`, { participantIds });
+      return response.data;
+    },
+    removeGroupMember: async (conversationId: string, userId: string) => {
+      const response = await api.delete(`/chat/conversation/${conversationId}/members/${userId}`);
+      return response.data;
+    },
+    leaveGroup: async (conversationId: string) => {
+      const response = await api.post(`/chat/conversation/${conversationId}/leave`);
+      return response.data;
+    },
+    renameGroup: async (conversationId: string, name: string) => {
+      const response = await api.put(`/chat/conversation/${conversationId}/name`, { name });
+      return response.data;
+    },
+    lockConversation: async (conversationId: string) => {
+      const response = await api.put(`/chat/conversation/${conversationId}/lock`);
+      return response.data;
+    },
+    unlockConversation: async (conversationId: string) => {
+      const response = await api.put(`/chat/conversation/${conversationId}/unlock`);
+      return response.data;
+    },
+    getUnreadSummary: async () => {
+      const response = await api.get('/chat/notifications/unread');
+      return response.data;
+    },
+    getMentionNotifications: async (limit = 20) => {
+      const response = await api.get('/chat/notifications/mentions', { params: { limit } });
+      return response.data;
+    },
+    markConversationRead: async (conversationId: string) => {
+      const response = await api.post(`/chat/messages/${conversationId}/read`);
+      return response.data;
+    },
+    createConversation: async (conversationData: {
+      type: 'direct' | 'group' | 'announcement';
+      participants: string[];
+      name?: string;
+      department?: string;
+    }) => {
+      const response = await api.post('/chat/conversation', conversationData);
+      return response.data;
+    },
+    sendMessage: async (messageData: {
+      conversationId: string;
+      content: string;
+      mentions?: string[];
+      replyTo?: string | null;
+    }) => {
+      const response = await api.post('/chat/message', messageData);
+      return response.data;
+    },
+    editMessage: async (messageId: string, payload: { content: string; mentions?: string[] }) => {
+      const response = await api.put(`/chat/message/${messageId}`, payload);
+      return response.data;
+    },
+    deleteMessage: async (messageId: string, scope: 'me' | 'everyone' = 'me') => {
+      const response = await api.delete(`/chat/message/${messageId}`, { data: { scope } });
+      return response.data;
+    },
+    replyToMessage: async (messageId: string, payload: { content: string; mentions?: string[] }) => {
+      const response = await api.post(`/chat/message/${messageId}/reply`, payload);
+      return response.data;
+    },
+    reactToMessage: async (messageId: string, emoji: string) => {
+      const response = await api.post(`/chat/message/${messageId}/reaction`, { emoji });
+      return response.data;
+    },
+    pinMessage: async (messageId: string) => {
+      const response = await api.post(`/chat/message/${messageId}/pin`);
+      return response.data;
+    },
+    unpinMessage: async (messageId: string) => {
+      const response = await api.delete(`/chat/message/${messageId}/pin`);
+      return response.data;
+    },
+  },
 };
 
 export default api;

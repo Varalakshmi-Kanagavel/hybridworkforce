@@ -1,0 +1,30 @@
+const express = require('express');
+const router = express.Router();
+const chatController = require('../controllers/chatController');
+const authMiddleware = require('../middleware/auth');
+
+router.post('/conversation', authMiddleware, chatController.createConversation);
+router.get('/conversations', authMiddleware, chatController.getUserConversations);
+router.get('/messages/:conversationId', authMiddleware, chatController.getMessages);
+router.get('/messages/:conversationId/search', authMiddleware, chatController.searchMessages);
+router.post('/messages/:conversationId/read', authMiddleware, chatController.markConversationRead);
+router.get('/conversation/:conversationId/pinned', authMiddleware, chatController.getPinnedMessages);
+router.get('/conversation/:conversationId/participants', authMiddleware, chatController.getConversationParticipants);
+router.post('/conversation/:conversationId/members', authMiddleware, chatController.addGroupMembers);
+router.delete('/conversation/:conversationId/members/:userId', authMiddleware, chatController.removeGroupMember);
+router.post('/conversation/:conversationId/leave', authMiddleware, chatController.leaveGroup);
+router.put('/conversation/:conversationId/name', authMiddleware, chatController.renameGroup);
+router.put('/conversation/:conversationId/lock', authMiddleware, chatController.lockConversation);
+router.put('/conversation/:conversationId/unlock', authMiddleware, chatController.unlockConversation);
+router.post('/message', authMiddleware, chatController.sendMessage);
+router.put('/message/:messageId', authMiddleware, chatController.editMessage);
+router.delete('/message/:messageId', authMiddleware, chatController.deleteMessage);
+router.post('/message/:messageId/reply', authMiddleware, chatController.replyToMessage);
+router.post('/message/:messageId/reaction', authMiddleware, chatController.reactToMessage);
+router.post('/message/:messageId/pin', authMiddleware, chatController.pinMessage);
+router.delete('/message/:messageId/pin', authMiddleware, chatController.unpinMessage);
+router.get('/notifications/unread', authMiddleware, chatController.getUnreadSummary);
+router.get('/notifications/mentions', authMiddleware, chatController.getMentionNotifications);
+router.get('/users', authMiddleware, chatController.getUsers);
+
+module.exports = router;
