@@ -151,6 +151,11 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Current password and new password are required' });
     }
 
+    // Validate new password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+
     const user = await User.findById(req.user.userId).select('+password');
 
     if (!user) {
@@ -165,7 +170,7 @@ exports.changePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    res.json({ message: 'Password changed successfully' });
+    res.json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Change password error:', error);
     res.status(500).json({ message: 'Server error' });
