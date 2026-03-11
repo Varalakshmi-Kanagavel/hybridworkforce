@@ -164,6 +164,16 @@ exports.checkIn = async (req, res) => {
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('userId', 'name email');
 
+    // Emit socket event for real-time dashboard update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('attendanceUpdated', {
+        userId: populatedAttendance.userId._id.toString(),
+        timestamp: populatedAttendance.checkInTime,
+        status: populatedAttendance.status
+      });
+    }
+
     res.status(201).json({
       message: 'Check-in successful',
       session: {
@@ -226,6 +236,16 @@ exports.checkOut = async (req, res) => {
 
     const populatedAttendance = await Attendance.findById(attendance._id)
       .populate('userId', 'name email');
+
+    // Emit socket event for real-time dashboard update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('attendanceUpdated', {
+        userId: populatedAttendance.userId._id.toString(),
+        timestamp: populatedAttendance.checkOutTime,
+        status: populatedAttendance.status
+      });
+    }
 
     res.json({
       message: 'Check-out successful',

@@ -1,6 +1,37 @@
 const User = require('../models/User');
 const LeaveRequest = require('../models/LeaveRequest');
 const BroadcastMessage = require('../models/BroadcastMessage');
+const Attendance = require('../models/Attendance');
+
+// Helper to get start and end of day
+const getStartOfDay = (date = new Date()) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+};
+
+const getEndOfDay = (date = new Date()) => {
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return end;
+};
+
+// Helper to check if user has approved WFH for today
+const checkWFHStatus = async (userId) => {
+  const today = new Date();
+  const startOfDay = getStartOfDay(today);
+  const endOfDay = getEndOfDay(today);
+
+  const wfhRequest = await LeaveRequest.findOne({
+    userId,
+    type: 'wfh',
+    status: 'approved',
+    fromDate: { $lte: endOfDay },
+    toDate: { $gte: startOfDay }
+  });
+
+  return wfhRequest ? 'wfh' : 'office';
+};
 
 // @desc    Get employee dashboard data
 // @route   GET /api/dashboard/employee
@@ -8,6 +39,21 @@ const BroadcastMessage = require('../models/BroadcastMessage');
 exports.getEmployeeDashboard = async (req, res) => {
   try {
     const userId = req.user.userId;
+
+    // Get today's attendance for login time
+    const startOfDay = getStartOfDay();
+    const endOfDay = getEndOfDay();
+    
+    const todayAttendance = await Attendance.findOne({
+      userId,
+      date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+
+    // Check work mode (WFH or Office)
+    const workMode = await checkWFHStatus(userId);
 
     // Get user's leave requests
     const leaveRequests = await LeaveRequest.find({ userId })
@@ -32,7 +78,10 @@ exports.getEmployeeDashboard = async (req, res) => {
     res.json({
       stats: {
         pendingLeaveCount,
-        totalLeaveRequests: leaveRequests.length
+        totalLeaveRequests: leaveRequests.length,
+        loginTime: todayAttendance?.checkInTime || null,
+        workMode,
+        status: todayAttendance?.status || 'available'
       },
       recentLeaveRequests: leaveRequests,
       recentBroadcasts: broadcasts
@@ -48,7 +97,23 @@ exports.getEmployeeDashboard = async (req, res) => {
 // @access  Private (MANAGER)
 exports.getManagerDashboard = async (req, res) => {
   try {
+    const userId = req.user.userId;
     const teamId = req.user.teamId;
+
+    // Get today's attendance for login time
+    const startOfDay = getStartOfDay();
+    const endOfDay = getEndOfDay();
+    
+    const todayAttendance = await Attendance.findOne({
+      userId,
+      date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+
+    // Check work mode (WFH or Office)
+    const workMode = await checkWFHStatus(userId);
 
     // Get team members
     const teamMembers = await User.find({ 
@@ -72,7 +137,10 @@ exports.getManagerDashboard = async (req, res) => {
       stats: {
         teamSize: teamMembers.length,
         pendingApprovals: pendingLeaveRequests.length,
-        teamOnlineCount
+        teamOnlineCount,
+        loginTime: todayAttendance?.checkInTime || null,
+        workMode,
+        status: todayAttendance?.status || 'available'
       },
       teamMembers,
       pendingLeaveRequests: pendingLeaveRequests.slice(0, 10)
@@ -88,6 +156,23 @@ exports.getManagerDashboard = async (req, res) => {
 // @access  Private (HR_ADMIN)
 exports.getHRDashboard = async (req, res) => {
   try {
+    const userId = req.user.userId;
+
+    // Get today's attendance for login time
+    const startOfDay = getStartOfDay();
+    const endOfDay = getEndOfDay();
+    
+    const todayAttendance = await Attendance.findOne({
+      userId,
+      date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+
+    // Check work mode (WFH or Office)
+    const workMode = await checkWFHStatus(userId);
+
     // Get all users
     const totalUsers = await User.countDocuments({ isActive: true });
     const activeUsers = await User.countDocuments({ isActive: true });
@@ -107,7 +192,10 @@ exports.getHRDashboard = async (req, res) => {
       stats: {
         totalUsers,
         activeUsers,
-        pendingApprovals: pendingLeaveRequests.length
+        pendingApprovals: pendingLeaveRequests.length,
+        loginTime: todayAttendance?.checkInTime || null,
+        workMode,
+        status: todayAttendance?.status || 'available'
       },
       pendingLeaveRequests: pendingLeaveRequests.slice(0, 10),
       recentUsers

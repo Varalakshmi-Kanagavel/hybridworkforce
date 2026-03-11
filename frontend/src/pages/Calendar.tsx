@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Building2, Home, Palmtree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,7 @@ interface CalendarEntry {
 }
 
 const Calendar: React.FC = () => {
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<CalendarEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -260,11 +262,19 @@ const Calendar: React.FC = () => {
           <div className="enterprise-card">
             <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => navigate('/leave')}
+              >
                 <Palmtree className="w-4 h-4 mr-2 text-calendar-leave" />
                 Apply Leave
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start"
+                onClick={() => navigate('/leave')}
+              >
                 <Home className="w-4 h-4 mr-2 text-calendar-wfh" />
                 Apply WFH
               </Button>

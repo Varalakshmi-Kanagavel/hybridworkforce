@@ -72,6 +72,9 @@ const io = new Server(server, {
 
 app.set('io', io);
 
+// Track online users
+const onlineUsers = new Map(); // userId -> { socketId, name, teamId }
+
 // Socket.IO Authentication Middleware
 io.use(async (socket, next) => {
   try {
@@ -106,6 +109,16 @@ io.use(async (socket, next) => {
 // Socket.IO Connection Handler
 io.on('connection', async (socket) => {
   console.log('User connected:', socket.user.userId);
+
+  // Track online user
+  onlineUsers.set(socket.user.userId, {
+    socketId: socket.id,
+    name: socket.user.name,
+    teamId: socket.user.teamId
+  });
+
+  // Broadcast online users count
+  io.emit('onlineUsersCount', onlineUsers.size);
 
   // Join personal room
   socket.join(`user_${socket.user.userId}`);
@@ -385,9 +398,89 @@ io.on('connection', async (socket) => {
     }
   });
 
+  // ===== Dashboard Real-Time Events =====
+  
+  socket.on('statusChange', (data) => {
+    try {
+      const { status } = data;
+      // Broadcast status change to all connected clients
+      io.emit('statusUpdated', {
+        userId: socket.user.userId,
+        status,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Status change error:', error);
+    }
+  });
+
+  socket.on('workModeChange', (data) => {
+    try {
+      const { mode } = data;
+      // Broadcast work mode change to all connected clients
+      io.emit('workModeUpdated', {
+        userId: socket.user.userId,
+        mode,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Work mode change error:', error);
+    }
+  });
+
+  socket.on('attendanceMarked', (data) => {
+    try {
+      const { type, timestamp } = data;
+      // Broadcast attendance update to all connected clients
+      io.emit('attendanceUpdated', {
+        userId: socket.user.userId,
+        type,
+        timestamp: timestamp || new Date()
+      });
+    } catch (error) {
+      console.error('Attendance marked error:', error);
+    }
+  });
+
+  socket.on('activeTimeUpdate', (data) => {
+    try {
+      const { time } = data;
+      // Broadcast active time update to all connected clients
+      io.emit('activeTimeUpdated', {
+        userId: socket.user.userId,
+        time,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Active time update error:', error);
+    }
+  });
+
+  socket.on('teamOnlineUpdate', (data) => {
+    try {
+      const { count, members } = data;
+      // Broadcast team online count to all connected clients
+      io.emit('teamOnlineUpdated', {
+        userId: socket.user.userId,
+        count,
+        members: members || [],
+        timestamp: new Date()
+      });
+    } catch (error) {
+      console.error('Team online update error:', error);
+    }
+  });
+
   // Handle disconnect
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.user.userId);
+    
+    // Remove from online users
+    onlineUsers.delete(socket.user.userId);
+    
+    // Broadcast updated online count
+    io.emit('onlineUsersCount', onlineUsers.size);
+    
     socket.broadcast.emit('user_offline', {
       userId: socket.user.userId,
       name: socket.user.name
