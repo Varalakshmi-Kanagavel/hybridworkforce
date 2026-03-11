@@ -1423,9 +1423,6 @@ const Chat: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="font-semibold text-foreground">{activeContact.name}</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {activeConversationStatus}
-                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

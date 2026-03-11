@@ -163,11 +163,13 @@ export const apiService = {
       return response.data;
     },
   },
-
-  // Calendar
-  calendar: {
-    getMonth: async (year: number, month: number) => {
-      const response = await api.get(`/calendar/month?year=${year}&month=${month}`);
+// Calendar
+calendar: {
+  getMonth: async (year: number, month: number) => {
+    const response = await api.get(`/calendar/month?year=${year}&month=${month}`);
+    return response.data;
+  },
+},
   // Chat
   chat: {
     getConversations: async () => {
@@ -275,7 +277,35 @@ export const apiService = {
       return response.data;
     },
   },
+
+  // Attendance
+  attendance: {
+    getToday: async () => {
+      const response = await api.get('/attendance/today');
+      return response.data;
+    },
+    checkIn: async () => {
+      const response = await api.post('/attendance/check-in');
+      return response.data;
+    },
+    checkOut: async () => {
+      const response = await api.post('/attendance/check-out');
+      return response.data;
+    },
+    getHistory: async (params?: { startDate?: string; endDate?: string; limit?: number }) => {
+      const queryParams = new URLSearchParams();
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      const queryString = queryParams.toString();
+      const response = await api.get(`/attendance/history${queryString ? `?${queryString}` : ''}`);
+      return response.data;
+    },
+    updateActivity: async () => {
+      const response = await api.put('/attendance/activity');
+      return response.data;
+    },
+  },
 };
 
 export default api;
-

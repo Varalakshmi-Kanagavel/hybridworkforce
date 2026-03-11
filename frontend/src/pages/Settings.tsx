@@ -52,73 +52,84 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground">Manage your account security</p>
-      </div>
-
-      <div className="max-w-lg bg-card border border-border rounded-xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Lock className="w-5 h-5 text-primary" />
-          <h2 className="text-lg font-semibold text-foreground">Change Password</h2>
+    <div className="p-6 lg:p-8 max-w-2xl">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+          <p className="text-muted-foreground">Manage your account security</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
-            <Input
-              id="currentPassword"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-              required
-            />
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <Lock className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Change Password</h2>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              required
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword" className="text-sm font-medium">
+                Current Password
+              </Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                className="rounded-lg focus:ring-2 focus:ring-primary/20"
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              required
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPassword" className="text-sm font-medium">
+                New Password
+              </Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="rounded-lg focus:ring-2 focus:ring-primary/20"
+                required
+              />
+            </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                Confirm New Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="rounded-lg focus:ring-2 focus:ring-primary/20"
+                required
+              />
+            </div>
 
-          {success && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
+            {error && (
+              <Alert variant="destructive" className="rounded-lg">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <Button type="submit" variant="enterprise" className="w-full" disabled={loading}>
-            {loading ? 'Updating...' : 'Change Password'}
-          </Button>
-        </form>
+            {success && (
+              <Alert className="rounded-lg">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button type="submit" variant="enterprise" className="w-full rounded-lg" disabled={loading}>
+              {loading ? 'Updating...' : 'Change Password'}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );

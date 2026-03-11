@@ -19,9 +19,9 @@ const MainLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-screen w-full bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="ml-64 h-screen overflow-y-auto">
         <Outlet />
       </main>
     </div>

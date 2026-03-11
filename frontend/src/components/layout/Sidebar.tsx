@@ -81,7 +81,7 @@ const Sidebar: React.FC = () => {
 
   return (
     <aside 
-      className="w-64 flex flex-col"
+      className="fixed left-0 top-0 w-64 h-screen flex flex-col"
       style={{
         background: 'linear-gradient(180deg, hsl(224 76% 18%) 0%, hsl(224 76% 22%) 50%, hsl(224 76% 20%) 100%)',
         boxShadow: '4px 0 24px -8px hsl(224 76% 15% / 0.4)'

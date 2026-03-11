@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Attendance = require('../models/Attendance');
 const { validationResult } = require('express-validator');
 
 // Generate JWT Token
@@ -116,6 +117,31 @@ exports.login = async (req, res) => {
       user.lastLoginDevice = deviceType;
       user.lastLoginAt = new Date();
       await user.save();
+    }
+
+    // Auto check-in: Create attendance record if not already checked in today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingAttendance = await Attendance.findOne({
+      userId: user._id,
+      date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
+    });
+
+    if (!existingAttendance) {
+      const now = new Date();
+      await Attendance.create({
+        userId: user._id,
+        date: now,
+        checkInTime: now,
+        lastActivity: now,
+        status: 'AVAILABLE'
+      });
     }
 
     // Generate token

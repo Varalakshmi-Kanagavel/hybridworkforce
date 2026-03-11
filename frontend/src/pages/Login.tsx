@@ -131,10 +131,6 @@ const Login: React.FC = () => {
             </a>
           </p>
         </div>
-
-        <p className="text-center text-white/50 text-sm mt-6">
-          © 2024 Cube AI Solutions. All rights reserved.
-        </p>
       </div>
     </div>
   );
