@@ -163,13 +163,15 @@ export const apiService = {
       return response.data;
     },
   },
-// Calendar
-calendar: {
-  getMonth: async (year: number, month: number) => {
-    const response = await api.get(`/calendar/month?year=${year}&month=${month}`);
-    return response.data;
+
+  // Calendar
+  calendar: {
+    getMonth: async (year: number, month: number) => {
+      const response = await api.get(`/calendar/month?year=${year}&month=${month}`);
+      return response.data;
+    },
   },
-},
+
   // Chat
   chat: {
     getConversations: async () => {
@@ -194,6 +196,10 @@ calendar: {
       const response = await api.get(`/chat/conversation/${conversationId}/participants`);
       return response.data;
     },
+    getConversationMembers: async (conversationId: string) => {
+      const response = await api.get(`/chat/conversation/${conversationId}/participants`);
+      return response.data;
+    },
     getPinnedMessages: async (conversationId: string) => {
       const response = await api.get(`/chat/conversation/${conversationId}/pinned`);
       return response.data;
@@ -202,8 +208,24 @@ calendar: {
       const response = await api.post(`/chat/conversation/${conversationId}/members`, { participantIds });
       return response.data;
     },
+    addMemberToConversation: async (conversationId: string, userId: string) => {
+      const response = await api.post(`/chat/conversation/${conversationId}/members`, { participantIds: [userId] });
+      return response.data;
+    },
     removeGroupMember: async (conversationId: string, userId: string) => {
       const response = await api.delete(`/chat/conversation/${conversationId}/members/${userId}`);
+      return response.data;
+    },
+    leaveConversation: async (conversationId: string) => {
+      const response = await api.post(`/chat/conversation/${conversationId}/leave`);
+      return response.data;
+    },
+    renameConversation: async (conversationId: string, name: string) => {
+      const response = await api.put(`/chat/conversation/${conversationId}/name`, { name });
+      return response.data;
+    },
+    clearConversation: async (conversationId: string) => {
+      const response = await api.delete(`/chat/messages/${conversationId}/clear`);
       return response.data;
     },
     leaveGroup: async (conversationId: string) => {

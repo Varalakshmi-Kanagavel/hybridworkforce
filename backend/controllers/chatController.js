@@ -4,6 +4,37 @@ const User = require('../models/User');
 
 const ANNOUNCEMENT_ALLOWED_ROLES = ['ADMIN', 'HR_ADMIN', 'MANAGER', 'SYS_ADMIN'];
 
+const dedupeObjectIds = (values = []) => {
+  return [...new Set(values.map((value) => value.toString()))];
+};
+
+const dedupeUsersById = (users = []) => {
+  const seen = new Set();
+
+  return users.filter((user) => {
+    const userId = (user?._id || user)?.toString();
+
+    if (!userId || seen.has(userId)) {
+      return false;
+    }
+
+    seen.add(userId);
+    return true;
+  });
+};
+
+const sanitizeConversationPayload = (conversation) => {
+  const conversationObject = typeof conversation?.toObject === 'function'
+    ? conversation.toObject()
+    : conversation;
+
+  return {
+    ...conversationObject,
+    participants: dedupeUsersById(conversationObject?.participants || []),
+    admins: dedupeUsersById(conversationObject?.admins || []),
+  };
+};
+
 const isConversationParticipant = (conversation, userId) => {
   return conversation.participants.some(
     (participantId) => participantId.toString() === userId.toString()
@@ -632,13 +663,17 @@ const getConversationParticipants = async (req, res) => {
       return res.status(404).json({ message: 'Conversation not found' });
     }
 
-    if (!isConversationParticipant(conversation, req.user.userId)) {
+    const isParticipant = conversation.participants.some(
+      (p) => p._id.toString() === req.user.userId
+    );
+
+    if (!isParticipant) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
     res.json({
-      participants: conversation.participants,
-      admins: conversation.admins,
+      participants: dedupeUsersById(conversation.participants),
+      admins: dedupeUsersById(conversation.admins || []),
     });
   } catch (error) {
     console.error('Get participants error:', error);
@@ -660,6 +695,14 @@ const addGroupMembers = async (req, res) => {
       return res.status(404).json({ message: 'Conversation not found' });
     }
 
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === req.user.userId
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     if (!['group', 'announcement'].includes(conversation.type)) {
       return res.status(400).json({ message: 'Members can only be managed in group or announcement conversations' });
     }
@@ -668,7 +711,7 @@ const addGroupMembers = async (req, res) => {
       return res.status(403).json({ message: 'Only group admins can add members' });
     }
 
-    const participantSet = new Set(conversation.participants.map((id) => id.toString()));
+    const participantSet = new Set(dedupeObjectIds(conversation.participants));
     participantIds.forEach((id) => participantSet.add(id.toString()));
     conversation.participants = [...participantSet];
     conversation.updatedAt = new Date();
@@ -681,7 +724,7 @@ const addGroupMembers = async (req, res) => {
 
     res.json({
       message: 'Members added successfully',
-      conversation: populatedConversation,
+      conversation: sanitizeConversationPayload(populatedConversation),
     });
   } catch (error) {
     console.error('Add members error:', error);
@@ -732,7 +775,7 @@ const removeGroupMember = async (req, res) => {
 
     res.json({
       message: 'Member removed successfully',
-      conversation: populatedConversation,
+      conversation: sanitizeConversationPayload(populatedConversation),
     });
   } catch (error) {
     console.error('Remove member error:', error);
@@ -753,12 +796,12 @@ const leaveGroup = async (req, res) => {
       return res.status(400).json({ message: 'Only group or announcement conversations support leave action' });
     }
 
-    if (!isConversationParticipant(conversation, req.user.userId)) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === req.user.userId
+    );
 
-    if (conversation.createdBy.toString() === req.user.userId.toString()) {
-      return res.status(400).json({ message: 'Conversation creator cannot leave without assigning a new admin' });
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Access denied' });
     }
 
     conversation.participants = conversation.participants.filter(
@@ -769,8 +812,9 @@ const leaveGroup = async (req, res) => {
       (adminId) => adminId.toString() !== req.user.userId.toString()
     );
 
-    if (conversation.participants.length < 2) {
-      return res.status(400).json({ message: 'Conversation must have at least two participants' });
+    // If no admins remain, promote the first remaining participant
+    if (conversation.admins.length === 0 && conversation.participants.length > 0) {
+      conversation.admins = [conversation.participants[0]];
     }
 
     conversation.updatedAt = new Date();
@@ -801,6 +845,14 @@ const renameGroup = async (req, res) => {
       return res.status(400).json({ message: 'Only group or announcement conversations can be renamed' });
     }
 
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === req.user.userId
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     if (!isConversationAdmin(conversation, req.user.userId)) {
       return res.status(403).json({ message: 'Only group admins can rename the conversation' });
     }
@@ -816,7 +868,7 @@ const renameGroup = async (req, res) => {
 
     res.json({
       message: 'Conversation name updated successfully',
-      conversation: populatedConversation,
+      conversation: sanitizeConversationPayload(populatedConversation),
     });
   } catch (error) {
     console.error('Rename group error:', error);
@@ -1023,6 +1075,44 @@ const unpinMessage = async (req, res) => {
   }
 };
 
+const clearConversation = async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+
+    const conversation = await Conversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    const isParticipant = conversation.participants.some(
+      (p) => p.toString() === req.user.userId
+    );
+
+    if (!isParticipant) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Add current user to deletedForUsers array for all messages in this conversation
+    const result = await Message.updateMany(
+      { 
+        conversationId: conversationId,
+        deletedForUsers: { $ne: req.user.userId }
+      },
+      { 
+        $addToSet: { deletedForUsers: req.user.userId }
+      }
+    );
+
+    res.json({ 
+      message: 'Conversation cleared successfully',
+      clearedMessagesCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Clear conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createConversation,
   getUserConversations,
@@ -1046,5 +1136,6 @@ module.exports = {
   getPinnedMessages,
   pinMessage,
   unpinMessage,
+  clearConversation,
   getUsers,
 };

@@ -150,6 +150,26 @@ interface MentionNotification {
 
 type NewChatMode = 'menu' | 'direct' | 'group' | 'announcement';
 type ChatFilter = 'all' | 'direct' | 'group' | 'announcement';
+type ManageConversationDialogMode = 'viewMembers' | 'addMembers' | 'renameGroup' | 'leaveConversation';
+
+const dedupeUsersById = <T extends { _id: string }>(users: T[] = []): T[] => {
+  const seen = new Set<string>();
+
+  return users.filter((user) => {
+    if (seen.has(user._id)) {
+      return false;
+    }
+
+    seen.add(user._id);
+    return true;
+  });
+};
+
+const normalizeConversation = (conversation: Conversation): Conversation => ({
+  ...conversation,
+  participants: dedupeUsersById(conversation.participants || []),
+  admins: dedupeUsersById(conversation.admins || []),
+});
 
 const Chat: React.FC = () => {
   const { user } = useAuth();
@@ -159,6 +179,7 @@ const Chat: React.FC = () => {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
   const actionMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
@@ -200,6 +221,8 @@ const Chat: React.FC = () => {
   const [mentionUnreadCount, setMentionUnreadCount] = useState(0);
   const [syncedTotalUnread, setSyncedTotalUnread] = useState<number | null>(null);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isClearChatDialogOpen, setIsClearChatDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<ManageConversationDialogMode | null>(null);
 
   const canCreateAnnouncement = ['MANAGER', 'HR_ADMIN', 'SYS_ADMIN'].includes(user?.role || '');
   const isAnnouncementConversation = activeConversation?.type === 'announcement';
@@ -347,11 +370,13 @@ const Chat: React.FC = () => {
       try {
         setLoading(true);
         const response = await apiService.chat.getConversations();
-        setConversations(response.conversations || []);
+        const normalizedConversations = (response.conversations || []).map(normalizeConversation);
+
+        setConversations(normalizedConversations);
         
         // Select first conversation if available
-        if (response.conversations && response.conversations.length > 0) {
-          setActiveConversation(response.conversations[0]);
+        if (normalizedConversations.length > 0) {
+          setActiveConversation(normalizedConversations[0]);
         }
       } catch (error: any) {
         console.error('Failed to load conversations:', error);
@@ -453,21 +478,23 @@ const Chat: React.FC = () => {
   };
 
   const applyConversationUpdate = (updatedConversation: Conversation) => {
+    const normalizedConversation = normalizeConversation(updatedConversation);
+
     setConversations((prev) => {
-      const exists = prev.some((conversation) => conversation._id === updatedConversation._id);
+      const exists = prev.some((conversation) => conversation._id === normalizedConversation._id);
       const next = exists
         ? prev.map((conversation) => (
-            conversation._id === updatedConversation._id ? updatedConversation : conversation
+            conversation._id === normalizedConversation._id ? normalizedConversation : conversation
           ))
-        : [updatedConversation, ...prev];
+        : [normalizedConversation, ...prev];
 
       return next.sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
     });
 
-    if (activeConversation?._id === updatedConversation._id) {
-      setActiveConversation(updatedConversation);
+    if (activeConversation?._id === normalizedConversation._id) {
+      setActiveConversation(normalizedConversation);
     }
   };
 
@@ -495,46 +522,83 @@ const Chat: React.FC = () => {
     setMentionUnreadCount(0);
   };
 
-  const handleViewMembers = () => {
-    console.log('View Members clicked');
+  const handleViewMembers = async () => {
     setIsActionMenuOpen(false);
+    await openManageConversationDialog('viewMembers');
   };
 
-  const handleAddMembers = () => {
-    console.log('Add Members clicked');
+  const handleAddMembers = async () => {
     setIsActionMenuOpen(false);
+    await openManageConversationDialog('addMembers');
   };
 
-  const handleRenameGroup = () => {
-    console.log('Rename Group clicked');
+  const handleRenameGroup = async () => {
     setIsActionMenuOpen(false);
+    await openManageConversationDialog('renameGroup');
   };
 
-  const handleLeaveConversationMenu = () => {
-    console.log('Leave Conversation clicked');
+  const handleLeaveConversationMenu = async () => {
     setIsActionMenuOpen(false);
+    await openManageConversationDialog('leaveConversation');
   };
 
   const handleClearChat = () => {
-    console.log('Clear Chat clicked');
     setIsActionMenuOpen(false);
+    setIsClearChatDialogOpen(true);
+  };
+
+  const confirmClearChat = async () => {
+    if (!activeConversation) return;
+
+    try {
+      const response = await apiService.chat.clearConversation(activeConversation._id);
+      
+      // Reload messages to reflect the cleared state
+      setMessages([]);
+      
+      setIsClearChatDialogOpen(false);
+      toast({ 
+        title: 'Success', 
+        description: response.message || 'Chat cleared successfully' 
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to clear chat',
+        variant: 'destructive',
+      });
+    }
   };
 
   useEffect(() => {
     loadMentionNotifications();
   }, []);
 
-  const openManageConversationDialog = async () => {
+  const openManageConversationDialog = async (mode: ManageConversationDialogMode) => {
     if (!activeConversation || activeConversation.type === 'direct') {
       return;
     }
 
     try {
       setGroupActionLoading(true);
-      const response = await apiService.chat.getConversationParticipants(activeConversation._id);
-      setConversationParticipants(response.participants || []);
-      setConversationAdmins((response.admins || []).map((admin: NewChatUser) => admin._id));
+
+      const [participantsResponse, usersResponse] = await Promise.all([
+        apiService.chat.getConversationParticipants(activeConversation._id),
+        mode === 'addMembers' ? apiService.chat.getUsers() : Promise.resolve(null),
+      ]);
+
+      const participants = dedupeUsersById(participantsResponse.participants || []);
+      const admins = dedupeUsersById(participantsResponse.admins || []);
+
+      setConversationParticipants(participants);
+      setConversationAdmins(admins.map((admin: NewChatUser) => admin._id));
       setRenameValue(activeConversation.name || '');
+
+      if (mode === 'addMembers' && usersResponse) {
+        setAvailableUsers(usersResponse.users || []);
+      }
+
+      setDialogMode(mode);
       setIsManageConversationOpen(true);
     } catch (error) {
       toast({
@@ -546,6 +610,27 @@ const Chat: React.FC = () => {
       setGroupActionLoading(false);
     }
   };
+
+  const handleManageConversationOpenChange = (open: boolean) => {
+    setIsManageConversationOpen(open);
+
+    if (!open) {
+      setDialogMode(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!isManageConversationOpen || dialogMode !== 'renameGroup') {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [dialogMode, isManageConversationOpen]);
 
   const handleRenameConversation = async () => {
     if (!activeConversation || !renameValue.trim()) return;
@@ -575,9 +660,11 @@ const Chat: React.FC = () => {
       setGroupActionLoading(true);
       const response = await apiService.chat.addGroupMembers(activeConversation._id, [userId]);
       if (response.conversation) {
-        applyConversationUpdate(response.conversation);
-        setConversationParticipants(response.conversation.participants || []);
-        setConversationAdmins((response.conversation.admins || []).map((admin: NewChatUser) => admin._id));
+        const normalizedConversation = normalizeConversation(response.conversation);
+
+        applyConversationUpdate(normalizedConversation);
+        setConversationParticipants(normalizedConversation.participants || []);
+        setConversationAdmins((normalizedConversation.admins || []).map((admin: NewChatUser) => admin._id));
       }
       toast({ title: 'Success', description: response.message || 'Member added' });
     } catch (error) {
@@ -598,9 +685,11 @@ const Chat: React.FC = () => {
       setGroupActionLoading(true);
       const response = await apiService.chat.removeGroupMember(activeConversation._id, memberId);
       if (response.conversation) {
-        applyConversationUpdate(response.conversation);
-        setConversationParticipants(response.conversation.participants || []);
-        setConversationAdmins((response.conversation.admins || []).map((admin: NewChatUser) => admin._id));
+        const normalizedConversation = normalizeConversation(response.conversation);
+
+        applyConversationUpdate(normalizedConversation);
+        setConversationParticipants(normalizedConversation.participants || []);
+        setConversationAdmins((normalizedConversation.admins || []).map((admin: NewChatUser) => admin._id));
       }
       toast({ title: 'Success', description: response.message || 'Member removed' });
     } catch (error) {
@@ -635,7 +724,7 @@ const Chat: React.FC = () => {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to leave conversation',
+        description: (error as any)?.response?.data?.message || 'Failed to leave conversation',
         variant: 'destructive',
       });
     } finally {
@@ -740,7 +829,9 @@ const Chat: React.FC = () => {
       }
 
       const response = await apiService.chat.createConversation(payload);
-      const conversation: Conversation | undefined = response.conversation;
+      const conversation: Conversation | undefined = response.conversation
+        ? normalizeConversation(response.conversation)
+        : undefined;
 
       if (!conversation) {
         throw new Error('Conversation not returned by server');
@@ -952,7 +1043,7 @@ const Chat: React.FC = () => {
 
   // Handle conversation selection
   const handleConversationClick = (conversation: Conversation) => {
-    setActiveConversation(conversation);
+    setActiveConversation(normalizeConversation(conversation));
     setMessages([]);
     setTypingUsers([]);
     setReplyTarget(null);
@@ -1270,6 +1361,31 @@ const Chat: React.FC = () => {
       default: return 'bg-gray-400';
     }
   };
+
+  const manageDialogTitle = dialogMode === 'viewMembers'
+    ? 'View Members'
+    : dialogMode === 'addMembers'
+      ? 'Add Members'
+      : dialogMode === 'renameGroup'
+        ? 'Rename Group'
+        : dialogMode === 'leaveConversation'
+          ? 'Leave Conversation'
+          : 'Manage Conversation';
+
+  const manageDialogDescription = dialogMode === 'viewMembers'
+    ? 'Review the members currently in this conversation.'
+    : dialogMode === 'addMembers'
+      ? 'Add new members to this conversation.'
+      : dialogMode === 'renameGroup'
+        ? 'Update the conversation name.'
+        : dialogMode === 'leaveConversation'
+          ? 'Leave this conversation. You will stop receiving new messages from it.'
+          : 'Manage members, name, and conversation actions.';
+
+  const showMembersSection = dialogMode === 'viewMembers' || dialogMode === 'addMembers';
+  const showAddMembersSection = dialogMode === 'addMembers';
+  const showRenameSection = dialogMode === 'renameGroup';
+  const showLeaveSection = dialogMode === 'leaveConversation';
 
   return (
     <div className="h-screen flex bg-background animate-fade-in">
@@ -1999,42 +2115,43 @@ const Chat: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isManageConversationOpen} onOpenChange={setIsManageConversationOpen}>
+      <Dialog open={isManageConversationOpen} onOpenChange={handleManageConversationOpenChange}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Manage Conversation</DialogTitle>
+            <DialogTitle>{manageDialogTitle}</DialogTitle>
             <DialogDescription>
-              Manage members, name, and lock state.
+              {manageDialogDescription}
             </DialogDescription>
           </DialogHeader>
 
-          {activeConversation && (
+          {activeConversation && dialogMode && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">Conversation Name</p>
-                <div className="flex gap-2">
+              {showRenameSection && (
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Conversation Name</p>
                   <Input
+                    ref={renameInputRef}
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
                     disabled={!canModerateCurrentConversation || groupActionLoading}
                   />
-                  <Button
-                    variant="outline"
-                    onClick={handleRenameConversation}
-                    disabled={!canModerateCurrentConversation || groupActionLoading || !renameValue.trim()}
-                  >
-                    Save
-                  </Button>
+                  {!canModerateCurrentConversation && (
+                    <p className="text-xs text-muted-foreground">
+                      Only conversation moderators can rename the group.
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-2">
+              {showMembersSection && (
+                <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Members ({conversationParticipants.length})</p>
                 <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
                   {conversationParticipants.map((member) => {
                     const isAdmin = conversationAdmins.includes(member._id)
                       || activeConversation.createdBy?._id === member._id;
-                    const canRemove = canModerateCurrentConversation
+                    const canRemove = showAddMembersSection
+                      && canModerateCurrentConversation
                       && activeConversation.createdBy?._id !== member._id;
 
                     return (
@@ -2061,9 +2178,10 @@ const Chat: React.FC = () => {
                     );
                   })}
                 </div>
-              </div>
+                </div>
+              )}
 
-              {canModerateCurrentConversation && (
+              {showAddMembersSection && canModerateCurrentConversation && (
                 <div className="space-y-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Add Members</p>
                   <div className="max-h-36 overflow-y-auto rounded-md border p-2 space-y-1">
@@ -2088,35 +2206,62 @@ const Chat: React.FC = () => {
                           </Button>
                         </div>
                       ))}
+                    {availableUsers.filter(
+                      (candidate) => !conversationParticipants.some((member) => member._id === candidate._id)
+                    ).length === 0 && (
+                      <p className="text-sm text-muted-foreground px-2 py-1">
+                        No more users available to add.
+                      </p>
+                    )}
                   </div>
+                </div>
+              )}
+
+              {showLeaveSection && (
+                <div className="rounded-md border p-4 space-y-2">
+                  <p className="text-sm text-foreground">
+                    You are about to leave <span className="font-medium">{activeConversation.name || 'this conversation'}</span>.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    You can be added back later by a conversation moderator.
+                  </p>
                 </div>
               )}
             </div>
           )}
 
           <DialogFooter>
-            <div className="w-full flex items-center justify-between">
-              <Button
-                variant="destructive"
-                onClick={handleLeaveConversation}
-                disabled={groupActionLoading}
-              >
-                Leave Conversation
-              </Button>
-              <div className="flex items-center gap-2">
-                {canModerateCurrentConversation && activeConversation && (
-                  <Button
-                    variant="outline"
-                    onClick={handleToggleLockConversation}
-                    disabled={groupActionLoading}
-                  >
-                    {activeConversation.isLocked ? 'Unlock' : 'Lock'} Conversation
-                  </Button>
-                )}
-                <Button variant="outline" onClick={() => setIsManageConversationOpen(false)}>
-                  Close
+            <div className="w-full flex items-center justify-end gap-2">
+              {showLeaveSection && (
+                <Button
+                  variant="destructive"
+                  onClick={handleLeaveConversation}
+                  disabled={groupActionLoading}
+                >
+                  Leave Conversation
                 </Button>
-              </div>
+              )}
+              {showRenameSection && (
+                <Button
+                  variant="outline"
+                  onClick={handleRenameConversation}
+                  disabled={!canModerateCurrentConversation || groupActionLoading || !renameValue.trim()}
+                >
+                  Save
+                </Button>
+              )}
+              {dialogMode === 'viewMembers' && canModerateCurrentConversation && activeConversation && (
+                <Button
+                  variant="outline"
+                  onClick={handleToggleLockConversation}
+                  disabled={groupActionLoading}
+                >
+                  {activeConversation.isLocked ? 'Unlock' : 'Lock'} Conversation
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => handleManageConversationOpenChange(false)}>
+                {showLeaveSection || showRenameSection ? 'Cancel' : 'Close'}
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>
@@ -2176,6 +2321,26 @@ const Chat: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Clear Chat Confirmation Dialog */}
+      <Dialog open={isClearChatDialogOpen} onOpenChange={setIsClearChatDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear Chat</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to clear all messages in this conversation? This action cannot be undone and will only clear the messages for you.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsClearChatDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmClearChat}>
+              Clear Chat
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

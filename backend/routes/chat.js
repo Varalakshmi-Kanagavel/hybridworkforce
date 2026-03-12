@@ -8,6 +8,7 @@ router.get('/conversations', authMiddleware, chatController.getUserConversations
 router.get('/messages/:conversationId', authMiddleware, chatController.getMessages);
 router.get('/messages/:conversationId/search', authMiddleware, chatController.searchMessages);
 router.post('/messages/:conversationId/read', authMiddleware, chatController.markConversationRead);
+router.delete('/messages/:conversationId/clear', authMiddleware, chatController.clearConversation);
 router.get('/conversation/:conversationId/pinned', authMiddleware, chatController.getPinnedMessages);
 router.get('/conversation/:conversationId/participants', authMiddleware, chatController.getConversationParticipants);
 router.post('/conversation/:conversationId/members', authMiddleware, chatController.addGroupMembers);
